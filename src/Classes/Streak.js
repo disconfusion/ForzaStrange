@@ -1,4 +1,5 @@
 import { Move } from "./Move";
+import { Item } from "../Data Structures/linked-list";
 
 export class Streak {
   rootMove; //First move of the streak;
@@ -37,6 +38,9 @@ export class Streak {
     this.nextMove.push(move);
   }
 
+  /**
+   * @param {Item[]} pointer - The reference has to be pushed in cellsPointersInTheLine property
+   */
   addCellPointer(pointer) {
     if (!Array.isArray(this.cellsPointersInTheLine)) {
       this.cellsPointersInTheLine = [pointer];
@@ -45,7 +49,54 @@ export class Streak {
     }
   }
 
+  /**
+   * @returns {boolean} True if nextMove not empty, otherwise returns False
+   */
   hasNextMove() {
     return Boolean(Array.isArray(this.nextMove) && this.nextMove.length);
+  }
+
+  /**
+   * @returns {number} Y direction offset
+   */
+  getDeltaY() {
+    let deltaY = 0; //direction: "c"
+    if (this.direction[0] == "u") {
+      deltaY = -1;
+    } else if (this.direction[0] == "d") {
+      deltaY = +1;
+    }
+    return deltaY;
+  }
+
+  /**
+   * @returns {number} X direction offset
+   */
+  getDeltaX() {
+    let deltaX = 0; //direction: "cc"
+    if (this.direction[1] == "l") {
+      deltaX = -1;
+    } else if (this.direction[1] == "r") {
+      deltaX = +1;
+    }
+    return deltaX;
+  }
+
+  getOppositeDirection() {
+    let oppositeDirection = "";
+
+    if (this.direction[0] == "u") {
+      oppositeDirection += "d";
+    } else {
+      oppositeDirection += "u";
+    }
+
+    if (this.direction[1] == "l") {
+      oppositeDirection += "r";
+    } else {
+      oppositeDirection += "l";
+    }
+
+    return oppositeDirection;
   }
 }

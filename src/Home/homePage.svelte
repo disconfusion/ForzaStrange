@@ -8,6 +8,7 @@
   import { sleepAsync } from "../Servicies/SleepAsync";
   import { PossibleDirection } from "../Classes/PossibleDirections";
   import Riepilogo from "../Riepilogo/Riepilogo.svelte";
+  import { setOppositeStreaks } from "../functions/setOppositeStreaks";
 
   let starting = true;
   let playerNames = ["", ""];
@@ -151,425 +152,82 @@
     /**
      * @type {{ cl: Streak | null, ul: Streak | null, ur: Streak | null }}
      */
-    let oppositeStreaks = {
+    let streaks = {
       cl: null,
       ul: null,
       ur: null,
     };
 
-    let posDir = new PossibleDirection(y, x, frontier);
+    let posDir = new PossibleDirection(y, x, frontier).getPossibleDirections();
 
-    //Building left streak
-    for (
-      let i = 0,
-        streak = new Streak({
-          rootMove: rootMove,
-          direction: "cl",
-          player: player,
-        }),
-        item = new Item(streak);
-      posDir.cl_isOk() && i < 4;
-      i++
-    ) {
-      let nextLeftCell = Table[y][x - i];
+    for (let direction of posDir) {
+      let streak = new Streak({
+        rootMove: rootMove,
+        direction: direction,
+        player: player,
+      });
 
-      //Player's piece found on the line
-      if (nextLeftCell === player) {
-        streak.streakCount++; //incrementing streak counter
+      let dX = streak.getDeltaX();
+      let dY = streak.getDeltaY();
 
-        //Winning condition
-        if (streak.streakCount === 4) {
-          winner = playerNames[streak.player - 1];
-          return;
-        }
-        //If it's max the third cell checked AND the adjacent frontier is on the line
-        else {
-          if (i < 3 && frontier[x - i - 1] == y) {
-            streak.addNextMove(new Move(y, x - i - 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
+      let item = new Item(streak);
+
+      for (let i = 0; i < 4; i++) {
+        let nextCell = Table[y + dY * i][x + dX * i];
+
+        //Player's piece found on the line
+        if (nextCell === player) {
+          streak.streakCount += 1; //incrementing streak counter
+
+          //Winning condition
+          if (streak.streakCount === 4) {
+            winner = playerNames[streak.player - 1];
+            return;
+          }
+          //If it's max the third cell checked AND the adjacent frontier is on the line
+          else {
+            if (i < 3 && frontier[x + dX * (i + 1)] == y + dY * (i + 1)) {
+              streak.addNextMove(new Move(y + dY * (i + 1), x + dX * (i + 1))); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
+            }
           }
         }
-      } else if (nextLeftCell === opponent) {
-        break;
-      }
-      //Cell is empty on the line
-      else {
-        //if cell isn't pointed by anyone
-        if (!nextLeftCell) {
-          Table[y][x - i] = new Array();
+        //Opponent's piece found on the line
+        else if (nextCell === opponent) {
+          break;
         }
-        Table[y][x - i].push(item); //Pushing the pointer to the item(Streak) in the cell
-        streak.addCellPointer(Table[y][x - i]);
-      }
-
-      //Streak analysed, pushing it in the right list
-      if (i == 3) {
-        oppositeStreaks["cl"] = streak;
-
-        //3 streak
-        if (streak.streakCount == 3) {
-          Streaks[player - 1][0].prepend(item);
-        }
-        //2 streak
-        else if (streak.streakCount == 2) {
-          Streaks[player - 1][0].append(item);
-        }
-        //1 streak
+        //Cell is empty on the line
         else {
-          Streaks[player - 1][1].append(item);
+          //if cell isn't pointed by anyone
+          if (!nextCell) {
+            Table[y + dY * i][x + dX * i] = new Array();
+          }
+          Table[y + dY * i][x + dX * i].push(item); //Pushing the pointer to the item(Streak) in the cell
+          streak.addCellPointer(Table[y + dY * i][x + dX * i]);
         }
-      }
-    }
 
-    //Building left-up streak
-    for (
-      let i = 0,
-        streak = new Streak({
-          rootMove: rootMove,
-          direction: "ul",
-          player: player,
-        }),
-        item = new Item(streak);
-      posDir.ul_isOk() && i < 4;
-      i++
-    ) {
-      //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
-      let nextCell = Table[y - i][x - i];
+        //Streak analysed, pushing it in the right list
+        if (i == 3) {
+          if (streaks[streak.direction] === null) {
+            streaks[streak.direction] = streak;
+          } else {
+            setOppositeStreaks(streak, streaks);
+          }
 
-      //Player's piece found on the line
-      if (nextCell === player) {
-        streak.streakCount += 1; //incrementing streak counter
-
-        //Winning condition
-        if (streak.streakCount === 4) {
-          winner = playerNames[streak.player - 1];
-          return;
-        }
-        //If it's max the third cell checked AND the adjacent frontier is on the line
-        else {
-          if (i < 3 && frontier[x - i - 1] == y - i - 1) {
-            streak.addNextMove(new Move(y - i - 1, x - i - 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
+          //3 streak
+          if (streak.streakCount == 3) {
+            Streaks[player - 1][0].prepend(item);
+          }
+          //2 streak
+          else if (streak.streakCount == 2) {
+            Streaks[player - 1][0].append(item);
+          }
+          //1 streak
+          else {
+            Streaks[player - 1][1].append(item);
           }
         }
-      } else if (nextCell === opponent) {
-        break;
-      }
-      //Cell is empty on the line
-      else {
-        //if cell isn't pointed by anyone
-        if (!nextCell) {
-          Table[y - i][x - i] = new Array();
-        }
-        Table[y - i][x - i].push(item); //Pushing the pointer to the item(Streak) in the cell
-        streak.addCellPointer(Table[y - i][x - i]);
-      }
-
-      //Streak analysed, pushing it in the right list
-      if (i == 3) {
-        //saving reference for opposite Streak
-        oppositeStreaks["ul"] = streak;
-
-        //3 streak
-        if (streak.streakCount == 3) {
-          Streaks[player - 1][0].prepend(item);
-        }
-        //2 streak
-        else if (streak.streakCount == 2) {
-          Streaks[player - 1][0].append(item);
-        }
-        //1 streak
-        else {
-          Streaks[player - 1][1].append(item);
-        }
       }
     }
-
-    //Building up streak
-    for (
-      let i = 1,
-        streak = new Streak({
-          rootMove: rootMove,
-          nextMove: [new Move(y - 1, x)],
-          direction: "uc",
-          streakCount: 1,
-          player: player,
-        }),
-        item = new Item(streak);
-      posDir.uc_isOk() && i < 4;
-      i++
-    ) {
-      if (!Table[y - i][x]) {
-        Table[y - i][x] = new Array();
-      }
-      Table[y - i][x].push(item); //Pushing the pointer to the item(Streak) in the cell
-      streak.addCellPointer(Table[y - i][x]);
-
-      //Streak analysed, pushing it in the right list
-      if (i == 3) {
-        Streaks[player - 1][1].append(item);
-      }
-    }
-
-    //Building up-right streak
-    for (
-      let i = 0,
-        streak = new Streak({
-          rootMove: rootMove,
-          direction: "ur",
-          player: player,
-        }),
-        item = new Item(streak);
-      posDir.ur_isOk() && i < 4;
-      i++
-    ) {
-      //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
-      let nextCell = Table[y - i][x + i];
-
-      //Player's piece found on the line
-      if (nextCell === player) {
-        streak.streakCount += 1; //incrementing streak counter
-
-        //Winning condition
-        if (streak.streakCount === 4) {
-          winner = playerNames[streak.player - 1];
-          return;
-        }
-        //If it's max the third cell checked AND the adjacent frontier is on the line
-        else {
-          if (i < 3 && frontier[x + i + 1] == y - i - 1) {
-            streak.addNextMove(new Move(y - i - 1, x + i + 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
-          }
-        }
-      } else if (nextCell === opponent) {
-        break;
-      }
-      //Cell is empty on the line
-      else {
-        //if cell isn't pointed by anyone
-        if (!nextCell) {
-          Table[y - i][x + i] = new Array();
-        }
-        Table[y - i][x + i].push(item); //Pushing the pointer to the item(Streak) in the cell
-        streak.addCellPointer(Table[y - i][x + i]);
-      }
-
-      //Streak analysed, pushing it in the right list
-      if (i == 3) {
-        oppositeStreaks["ur"] = streak;
-
-        //3 streak
-        if (streak.streakCount == 3) {
-          Streaks[player - 1][0].prepend(item);
-        }
-        //2 streak
-        else if (streak.streakCount == 2) {
-          Streaks[player - 1][0].append(item);
-        }
-        //1 streak
-        else {
-          Streaks[player - 1][1].append(item);
-
-          console.log();
-        }
-      }
-    }
-
-    //Building right streak
-    for (
-      let i = 0,
-        streak = new Streak({
-          rootMove: rootMove,
-          direction: "cr",
-          player: player,
-        }),
-        item = new Item(streak);
-      posDir.cr_isOk() && i < 4;
-      i++
-    ) {
-      //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
-      let nextCell = Table[y][x + i];
-
-      //Player's piece found on the line
-      if (nextCell === player) {
-        streak.streakCount += 1; //incrementing streak counter
-
-        //Winning condition
-        if (streak.streakCount === 4) {
-          winner = playerNames[streak.player - 1];
-          return;
-        }
-        //If it's max the third cell checked AND the adjacent frontier is on the line
-        else {
-          if (i < 3 && frontier[x + i + 1] == y) {
-            streak.addNextMove(new Move(y, x + i + 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
-          }
-        }
-      } else if (nextCell === opponent) {
-        break;
-      }
-      //Cell is empty on the line
-      else {
-        //if cell isn't pointed by anyone
-        if (!nextCell) {
-          Table[y][x + i] = new Array();
-        }
-        Table[y][x + i].push(item); //Pushing the pointer to the item(Streak) in the cell
-        streak.addCellPointer(Table[y][x + i]);
-      }
-
-      //Streak analysed, pushing it in the right list
-      if (i == 3) {
-        //saving each other reference, between opposites streaks
-        if (oppositeStreaks["cl"]) {
-          streak.oppositeDirectionStreak = oppositeStreaks["cl"];
-          oppositeStreaks["cl"].oppositeDirectionStreak = streak;
-        }
-
-        //3 streak
-        if (streak.streakCount == 3) {
-          Streaks[player - 1][0].prepend(item);
-        }
-        //2 streak
-        else if (streak.streakCount == 2) {
-          Streaks[player - 1][0].append(item);
-        }
-        //1 streak
-        else {
-          Streaks[player - 1][1].append(item);
-        }
-      }
-    }
-
-    //Building down-right streak
-    for (
-      let i = 0,
-        streak = new Streak({
-          rootMove: rootMove,
-          direction: "dr",
-          player: player,
-        }),
-        item = new Item(streak);
-      posDir.dr_isOk() && i < 4;
-      i++
-    ) {
-      //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
-      let nextCell = Table[y + i][x + i];
-
-      //Player's piece found on the line
-      if (nextCell === player) {
-        streak.streakCount += 1; //incrementing streak counter
-
-        //Winning condition
-        if (streak.streakCount === 4) {
-          winner = playerNames[streak.player - 1];
-          return;
-        }
-        //If it's max the third cell checked AND the adjacent frontier is on the line
-        else {
-          if (i < 3 && frontier[x + i + 1] == y + i + 1) {
-            streak.addNextMove(new Move(y + i + 1, x + i + 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
-          }
-        }
-      } else if (nextCell === opponent) {
-        break;
-      }
-      //Cell is empty on the line
-      else {
-        //if cell isn't pointed by anyone
-        if (!nextCell) {
-          Table[y + i][x + i] = new Array();
-        }
-        Table[y + i][x + i].push(item); //Pushing the pointer to the item(Streak) in the cell
-        streak.addCellPointer(Table[y + i][x + i]);
-      }
-
-      //Streak analysed, pushing it in the right list
-      if (i == 3) {
-        if (oppositeStreaks["ul"]) {
-          streak.oppositeDirectionStreak = oppositeStreaks["ul"];
-          oppositeStreaks["ul"].oppositeDirectionStreak = streak;
-        }
-
-        //3 streak
-        if (streak.streakCount == 3) {
-          Streaks[player - 1][0].prepend(item);
-        }
-        //2 streak
-        else if (streak.streakCount == 2) {
-          Streaks[player - 1][0].append(item);
-        }
-        //1 streak
-        else {
-          Streaks[player - 1][1].append(item);
-        }
-      }
-    }
-
-    //Building down-left streak
-    for (
-      let i = 0,
-        streak = new Streak({
-          rootMove: rootMove,
-          direction: "dl",
-          player: player,
-        }),
-        item = new Item(streak);
-      posDir.dl_isOk() && i < 4;
-      i++
-    ) {
-      //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
-      let nextCell = Table[y + i][x - i];
-
-      //Player's piece found on the line
-      if (nextCell === player) {
-        streak.streakCount += 1; //incrementing streak counter
-
-        //Winning condition
-        if (streak.streakCount === 4) {
-          winner = playerNames[streak.player - 1];
-          return;
-        }
-        //If it's max the third cell checked AND the adjacent frontier is on the line
-        else {
-          if (i < 3 && frontier[x - i - 1] == y + i + 1) {
-            streak.addNextMove(new Move(y + i + 1, x - i - 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
-          }
-        }
-      } else if (nextCell === opponent) {
-        break;
-      }
-      //Cell is empty on the line
-      else {
-        //if cell isn't pointed by anyone
-        if (!nextCell) {
-          Table[y + i][x - i] = new Array();
-        }
-        Table[y + i][x - i].push(item); //Pushing the pointer to the item(Streak) in the cell
-        streak.addCellPointer(Table[y + i][x - i]);
-      }
-
-      //Streak analysed, pushing it in the right list
-      if (i == 3) {
-        if (oppositeStreaks["ur"]) {
-          streak.oppositeDirectionStreak = oppositeStreaks["ur"];
-          oppositeStreaks["ur"].oppositeDirectionStreak = streak;
-        }
-
-        //3 streak
-        if (streak.streakCount == 3) {
-          Streaks[player - 1][0].prepend(item);
-        }
-        //2 streak
-        else if (streak.streakCount == 2) {
-          Streaks[player - 1][0].append(item);
-        }
-        //1 streak
-        else {
-          Streaks[player - 1][1].append(item);
-        }
-      }
-    }
-
-    return true;
   }
 
   function continueStreak(player, opponent) {
