@@ -1,0 +1,163 @@
+*{
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+  overflow: auto;
+}
+body{
+  margin: 0;
+}
+
+img{
+  width: 100%;
+  height: 100%;
+}
+
+@font-face {
+  font-family: "StrangeFont";
+  src: url("./assets/fonts/ImperatorBronze.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+h1 {
+  font-family: "StrangeFont", sans-serif;
+  text-align: center;
+  font-weight: normal;
+  font-size: 3rem;
+}
+
+main {
+  display: flex;
+  justify-content: space-evenly;
+  flex-direction: row;
+}
+
+section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  flex-wrap: nowrap;
+
+  margin: 50px;
+  border: 10px solid cadetblue;
+  border-radius: 200px;
+  padding: 60px;
+}
+
+#GameTable {
+  white-space: nowrap;
+  overflow: auto;
+  border: none;
+  overflow: auto;
+  border-radius: 0;
+  padding: 0;
+}
+
+#tab {
+  margin: 0 50px;
+}
+
+section::-webkit-scrollbar {
+  display: none;
+}
+
+section {
+  scrollbar-width: none;
+}
+
+section {
+  -ms-overflow-style: none;
+}
+
+span {
+  border: 2px solid black;
+  border-radius: 30px;
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+}
+
+#GameInput > div {
+  display: flex;
+  width: 80%;
+}
+
+header {
+  font-size: 16px;
+  font-weight: 400;
+  font-style: italic;
+}
+
+input {
+  text-decoration: none;
+  border: none;
+  outline: none;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+}
+
+#GameInput {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: visible;
+}
+
+#GameInput > div {
+  border: 2px solid black;
+
+  border-radius: 100px;
+  padding: 5px;
+}
+
+aside {
+  width: 24px;
+  height: 24px;
+  background-color: blue;
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 200px;
+}
+
+aside.color-one {
+  background-color: blue;
+}
+
+aside.color-two {
+  background-color: red;
+}
+
+button {
+  text-decoration: none;
+  background-color: black;
+  color: white;
+  font-size: 32px;
+  margin-top: 10px;
+  padding: 10px 30px;
+  border: transparent;
+  border-radius: 100px;
+}
+
+@media (max-width: 1024px) {
+  main {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  section{
+    margin: 30px;
+    padding: 50px 45;
+  }
+  
+  section *{
+    font-size: 16px;
+  }
+
+  button{
+    font-size: 20px;
+  }
+}
