@@ -6,6 +6,7 @@
   import { Item, List } from "../Data Structures/linked-list";
   import { Waiter } from "../Servicies/Waiter.js";
   import { sleepAsync } from "../Servicies/SleepAsync";
+  import { PossibleDirection } from "../Classes/PossibleDirections";
   import Riepilogo from "../Riepilogo/Riepilogo.svelte";
 
   let starting = true;
@@ -156,51 +157,7 @@
       ur: null,
     };
 
-    let leftPossible = x > 2;
-    let leftNoOpponent =
-      Table[y][x - 1] !== opponent &&
-      Table[y][x - 2] !== opponent &&
-      Table[y][x - 3] !== opponent;
-
-    let rightPossible = x < cols - 3;
-
-    let rightNoOpponent =
-      Table[y][x + 1] !== opponent &&
-      Table[y][x + 2] !== opponent &&
-      Table[y][x + 3] !== opponent;
-
-    let upPossible = y > 2;
-
-    let downPossible =
-      y < frontier.reduce((max, num) => Math.max(max, num), -Infinity) - 2;
-
-    let upLeftPossible =
-      leftPossible &&
-      upPossible &&
-      Table[y - 1][x - 1] !== opponent &&
-      Table[y - 2][x - 2] !== opponent &&
-      Table[y - 3][x - 3] !== opponent;
-
-    let upRightPossible =
-      rightPossible &&
-      upPossible &&
-      Table[y - 1][x + 1] !== opponent &&
-      Table[y - 2][x + 2] !== opponent &&
-      Table[y - 3][x + 3] !== opponent;
-
-    let downRightPossible =
-      downPossible &&
-      rightPossible &&
-      Table[y + 1][x + 1] !== opponent &&
-      Table[y + 2][x + 2] !== opponent &&
-      Table[y + 3][x + 3] !== opponent;
-
-    let downLeftPossible =
-      downPossible &&
-      leftPossible &&
-      Table[y + 1][x - 1] !== opponent &&
-      Table[y + 2][x - 2] !== opponent &&
-      Table[y + 3][x - 3] !== opponent;
+    let posDir = new PossibleDirection(y, x, frontier);
 
     //Building left streak
     for (
@@ -211,10 +168,9 @@
           player: player,
         }),
         item = new Item(streak);
-      leftPossible && leftNoOpponent && i < 4;
+      posDir.cl_isOk() && i < 4;
       i++
     ) {
-      //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
       let nextLeftCell = Table[y][x - i];
 
       //Player's piece found on the line
@@ -232,6 +188,8 @@
             streak.addNextMove(new Move(y, x - i - 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
           }
         }
+      } else if (nextLeftCell === opponent) {
+        break;
       }
       //Cell is empty on the line
       else {
@@ -271,7 +229,7 @@
           player: player,
         }),
         item = new Item(streak);
-      upLeftPossible && i < 4;
+      posDir.ul_isOk() && i < 4;
       i++
     ) {
       //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
@@ -292,6 +250,8 @@
             streak.addNextMove(new Move(y - i - 1, x - i - 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
           }
         }
+      } else if (nextCell === opponent) {
+        break;
       }
       //Cell is empty on the line
       else {
@@ -334,7 +294,7 @@
           player: player,
         }),
         item = new Item(streak);
-      upPossible && i < 4;
+      posDir.uc_isOk() && i < 4;
       i++
     ) {
       if (!Table[y - i][x]) {
@@ -358,7 +318,7 @@
           player: player,
         }),
         item = new Item(streak);
-      upRightPossible && i < 4;
+      posDir.ur_isOk() && i < 4;
       i++
     ) {
       //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
@@ -379,6 +339,8 @@
             streak.addNextMove(new Move(y - i - 1, x + i + 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
           }
         }
+      } else if (nextCell === opponent) {
+        break;
       }
       //Cell is empty on the line
       else {
@@ -420,14 +382,14 @@
           player: player,
         }),
         item = new Item(streak);
-      rightPossible && rightNoOpponent && i < 4;
+      posDir.cr_isOk() && i < 4;
       i++
     ) {
       //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
-      let nextLeftCell = Table[y][x + i];
+      let nextCell = Table[y][x + i];
 
       //Player's piece found on the line
-      if (nextLeftCell === player) {
+      if (nextCell === player) {
         streak.streakCount += 1; //incrementing streak counter
 
         //Winning condition
@@ -441,11 +403,13 @@
             streak.addNextMove(new Move(y, x + i + 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
           }
         }
+      } else if (nextCell === opponent) {
+        break;
       }
       //Cell is empty on the line
       else {
         //if cell isn't pointed by anyone
-        if (!nextLeftCell) {
+        if (!nextCell) {
           Table[y][x + i] = new Array();
         }
         Table[y][x + i].push(item); //Pushing the pointer to the item(Streak) in the cell
@@ -484,14 +448,14 @@
           player: player,
         }),
         item = new Item(streak);
-      downRightPossible && i < 4;
+      posDir.dr_isOk() && i < 4;
       i++
     ) {
       //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
-      let nextLeftCell = Table[y + i][x + i];
+      let nextCell = Table[y + i][x + i];
 
       //Player's piece found on the line
-      if (nextLeftCell === player) {
+      if (nextCell === player) {
         streak.streakCount += 1; //incrementing streak counter
 
         //Winning condition
@@ -505,11 +469,13 @@
             streak.addNextMove(new Move(y + i + 1, x + i + 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
           }
         }
+      } else if (nextCell === opponent) {
+        break;
       }
       //Cell is empty on the line
       else {
         //if cell isn't pointed by anyone
-        if (!nextLeftCell) {
+        if (!nextCell) {
           Table[y + i][x + i] = new Array();
         }
         Table[y + i][x + i].push(item); //Pushing the pointer to the item(Streak) in the cell
@@ -547,7 +513,7 @@
           player: player,
         }),
         item = new Item(streak);
-      downLeftPossible && i < 4;
+      posDir.dl_isOk() && i < 4;
       i++
     ) {
       //Ricorda: questo algoritmo si può semplificare e generalizzare con la storia dei numeri relativi
@@ -568,6 +534,8 @@
             streak.addNextMove(new Move(y + i + 1, x - i - 1)); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
           }
         }
+      } else if (nextCell === opponent) {
+        break;
       }
       //Cell is empty on the line
       else {
