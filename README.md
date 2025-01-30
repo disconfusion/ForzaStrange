@@ -35,3 +35,9 @@ Il gioco si svolge seguendo queste priorità: blocco streak, continua streak, mo
 - Vengono bloccate le streak avversarie da 3 oppure quelle simmetriche da 2 che hanno una casella adiacente valida per il piazzamento di un tassello;
 - Vengono continuate le prime streak disponibili che hanno tasselli con celle adiacenti nella `frontiera` seguendo queste priorità: 3-2-1;
 - Una mossa casuale viene fatta quando le altre due non sono possibili
+
+## Miglioramenti possibili
+
+- Rendering progressivo e utilizzo di matrice sparsa, per evitare memory leaking e rendere più in place il progetto
+- Eliminazione della divisione fra item e streak, inglobare i campi di streak nell'item
+- Migliore algoritmo di blocco: a volte il gioco continua a finire per via delle serie asimmetriche
