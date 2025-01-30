@@ -1,47 +1,37 @@
-# Svelte + Vite
+# StrangeFour
 
-This template should help get you started developing with Svelte in Vite.
+Strange Four è un motore semplicistico del gioco da tavolo Forza 4, dove la CPU gioca contro sè stessa.
 
-## Recommended IDE Setup
+# Idea del flusso
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+**Un'idea indicativa viene data nel Diagramma di flusso[here](./Diagramma%20di%20Flusso%20indicativo.jpg)**
 
-## Need an official Svelte framework?
+## Abstract del funzionamento
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+Viene creata una matrice[rows][columns] `Table` e una frontiera lunga come il numero di colonne.
 
-## Technical considerations
+- Le celle ospiteranno `riferimenti a streak` che potrebbero espandersi in quella direzione, utili per raggiungere in modo diretto le streak avversarie da terminare quando si piazza un tassello, oppure per aggiornare altre celle alleate;
+- Quando una cella è occupata da un tassello contiene l'id del giocatore(G1:1 oppure G2:2)
+- Quando cella vuota vale `null`
 
-**Why use this over SvelteKit?**
+`La frontiera` indica fino a dove il gioco si è spinto, utile ad indicare dove piazzare i prossimi tasselli.
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+Vengono inizializzate due liste collegate per giocatore contenute in `Streaks[]`;
+**`La scelta` della lista collegata nasce dalla `necessità` di modificare spesso la priorità degli item, rendendo `costante` il costo di movimento all'interno della `lista`. Se si fosse utilizzato un array, questo costo sarebbe stato asintoticamente n**
 
-This template contains as little as possible to get started with Vite + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+Le `liste collegate` contengono item con un campo `streak` e sono ordinate per `priorità`:
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+- nella prima lista `in testa` vengono inserite sempre le streak da 3, `in coda` quelle da 2;
+- la seconda contiene unicamente quelle da 1;
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
+**Definizione di streak**
+Una streak, in una data direzione, è un insieme formato da tutte le celle vuote o riempite da un alleato nel raggio di 3 caselle dalla radice.
 
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
+- Le celle conterranno i riferimenti che puntano ad esse.
 
-**Why include `.vscode/extensions.json`?**
+**Svolgimento del gioco**
+Il gioco si svolge seguendo queste priorità: blocco streak, continua streak, mossa casuale.
 
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `checkJs` in the JS template?**
-
-It is likely that most cases of changing variable types in runtime are likely to be accidental, rather than deliberate. This provides advanced typechecking out of the box. Should you like to take advantage of the dynamically-typed nature of JavaScript, it is trivial to change the configuration.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/sveltejs/svelte-hmr/tree/master/packages/svelte-hmr#preservation-of-local-state).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```js
-// store.js
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
-```
+- Vengono bloccate le streak avversarie da 3 oppure quelle simmetriche da 2 che hanno una casella adiacente valida per il piazzamento di un tassello;
+- Vengono continuate le prime streak disponibili che hanno tasselli con celle adiacenti nella `frontiera` seguendo queste priorità: 3-2-1;
+- Una mossa casuale viene fatta quando le altre due non sono possibili

@@ -39,7 +39,7 @@ export class Streak {
   }
 
   /**
-   * @param {Item[]} pointer - The reference has to be pushed in cellsPointersInTheLine property
+   * @param {Item[]} pointer - Will be pushed in cellsPointersInTheLine array
    */
   addCellPointer(pointer) {
     if (!Array.isArray(this.cellsPointersInTheLine)) {
@@ -82,6 +82,9 @@ export class Streak {
     return deltaX;
   }
 
+  /**
+   * @returns {String} Returns opposite direction string e.g. "uc"
+   */
   getOppositeDirection() {
     let oppositeDirection = "";
 

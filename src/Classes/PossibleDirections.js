@@ -20,6 +20,9 @@ export class PossibleDirection {
     this.dl = dc && this.cl;
   }
 
+  /**
+   * @returns {String[]} Returns array of valid root streaks directions
+   */
   getPossibleDirections() {
     return Object.keys(this).filter((dir) => this[dir]);
   }

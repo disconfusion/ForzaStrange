@@ -10,25 +10,23 @@
   import Riepilogo from "../Riepilogo/Riepilogo.svelte";
   import { setOppositeStreaks } from "../functions/setOppositeStreaks";
 
-  let starting = true;
-  let playerNames = ["", ""];
-  let movesForWinningCounter = 0;
-  let movesForBlocking = 0;
-  let duplicateCoordinatesCounter = 0;
-
-  /*Making Game Table */
-  //RICORDA IDEA BARRA DELLA PERCENTUALE PROPORZIONALE ALLE CELLE PUNTATE DALLE STREAK
+  //#region Game Input data
   let rows = 5;
   let cols = 5;
+  let playerNames = ["", ""];
+  let roundTime = 0.5; //Roundtime in seconds
+  //#endregion Game Input data
+
+  //#region Init Matrix&frontier
 
   let frontier;
   $: frontier = new Array(cols).fill(rows - 1); //Initializing frontier; for keeping track of possible moves for cols
 
   let Table = [[]];
-
   $: Table = Array.from({ length: rows }, () => Array(cols).fill(null)); //Initializing game Table
+  //#endregion Inizializzazione Matrice
 
-  //Setting Game metadata
+  //#region Init Streaks' linked lists
   let p1Streaks = new List(); //Player1's Linked List of real Streaks in the frame
   let p1PossibleStreaks = new List(); //Player1's Linked List of actual 1 "Streaks" in the frame
   let p2Streaks = new List(); //Player2's Linked List of real Streaks in the frame
@@ -38,54 +36,58 @@
     [p1Streaks, p1PossibleStreaks],
     [p2Streaks, p2PossibleStreaks],
   ];
+  //#endregion Init Streaks' linked lists
 
+  //#region Game Metadata
   let round;
-  let roundTime = 0.5; //Roundtime in seconds
   let History = []; //Initialize History; array of rounds
+
   let nMoves = 1;
   $: maxMoves = rows * cols;
+
   let winner = "";
 
+  let movesForWinningCounter = 0;
+  let movesForBlocking = 0;
+  let duplicateCoordinatesCounter = 0;
+
+  //#endregion Game Metadata
+
+  //Toggle variable for input's game form
+  let starting = true;
+
+  /**
+   * Setup start function
+   */
   async function start() {
+    //Saving player names
     playerNames[0] ? playerNames[0] : (playerNames[0] = "Giocatore 1");
     playerNames[1] ? playerNames[1] : (playerNames[1] = "Giocatore 2");
+    //Toggle input form
     starting = false;
+    //Scroll-Up to the Table
+    document.getElementById("app")?.scrollIntoView({ behavior: "smooth" });
+    //Game Rolls
     await play();
-    console.log("\n\n\n------Fine------");
   }
 
+  /**
+   * Game loop
+   */
   async function play() {
-    let playOptions = [BlockStreak, continueStreak, RandomMove]; //Priorities of next move
-    console.log("starting the game...");
+    let playOptions = [BlockStreak, continueStreak, RandomMove]; //Next Move priority queue
 
     //Make a move till there is a winner or there are no more available moves
     for (; !winner && nMoves < maxMoves + 1; nMoves++) {
-      //Setting CPU's Thinking Time
+      //Setting CPU's 'Thinking Time'
       roundTime ? await sleepAsync(roundTime * 1000) : undefined;
-
-      console.log(
-        "Round n: %d\nPlayer %d Thinking...\nPlayer %d waiting...",
-        nMoves,
-        1 + ((nMoves + 1) % 2),
-        (nMoves % 2) + 1
-      );
 
       //Making a move between functions in playOptions array
       for (let i = 0, moveDone = false; !moveDone && i < 3; i++) {
         moveDone = await Waiter(
           playOptions[i],
           ...[1 + ((nMoves + 1) % 2), (nMoves % 2) + 1]
-        ); //when function did best move set to true
-      }
-      console.log("Move Done:%o\n\n\n", Table);
-      Table = Table;
-      if (nMoves % 2 == 0) {
-        console.log("History %o: ", [...History]);
-        console.log("Player 1 streaks: ", p1Streaks, p1PossibleStreaks);
-        console.log("Player 2 streaks: ", p2Streaks, p2PossibleStreaks);
-        console.log(
-          "-----------------------------------Round Completed-----------------------------------\n\n\n\n\n\n\n\n"
-        );
+        ); //when function did a move return true
       }
     }
 
@@ -97,60 +99,72 @@
 
   /**
    * @param {Move} nextMove - Where to place player's piece
+   * @param {number} player - Actual player
+   * @param {number} opponent - Actual opponent
    */
   function placePiece(nextMove, player, opponent) {
-    CleaningCell(Table[nextMove.y][nextMove.x], opponent);
-    //If cell pointed by some streak
+    CleaningCell(Table[nextMove.y][nextMove.x], opponent); //Cleaning the chosen cell from opponent's streak item references
     frontier[nextMove.x]--; //Moving up the frontier
-    UpdateNextMoves(nextMove.y, nextMove.x);
-    Table[nextMove.y][nextMove.x] = player;
-    console.log("[[Piece placed... %s]]", Table[nextMove.y][nextMove.x]);
-
-    StartStreaks(nextMove.x, nextMove.y, player, opponent);
+    UpdateNextMoves(nextMove.y, nextMove.x); //Updating player's streaks in the cell, and the streaks in the new frontier
+    Table[nextMove.y][nextMove.x] = player; //Placing player's piece in the Table
+    StartStreaks(nextMove.x, nextMove.y, player, opponent); //Starting root streaks from the cell
 
     //Taking track of rounds
     if (player == 1) {
+      //Pushing new Round in the History
       round = new Round(nextMove, undefined);
       History.push(round);
       History = History;
     } else {
+      //Setting Round's second move
       History[History.length - 1].secondMove = { ...nextMove };
       History = History;
     }
   }
 
-  //Da riscrivere
+  /**
+   * @param {number} player - Actual player
+   * @param {number} opponent - Actual opponent
+   * @returns True when RandomMove is found
+   */
   async function RandomMove(player, opponent) {
-    let possibleX = await RandomApi(0, cols, 10); //Random number from cols
     let x;
-    let y; //Putting the piece in frontier of a random col
-    for (let randomNumber of possibleX) {
-      if (frontier[randomNumber] != -1) {
-        x = randomNumber;
-        y = frontier[x];
-        break;
-      }
-      duplicateCoordinatesCounter++;
-    }
-    console.log("[[Random Nums: %o]]", ...[possibleX]);
-    console.log("[[Random move: y:%d  x:%d]]", y, x);
-    await Waiter(placePiece, ...[new Move(y, x), player, opponent]);
+    let y;
+    let moveFound = false;
 
+    //Get 10 Random numbers between cols till have a valid one
+    while (!moveFound) {
+      let possibleX = await RandomApi(0, cols, 10); //Random number from cols(Getting 10 numbers for not asking more than one HTTP request)
+
+      //Looking for a valid number in possibleX array
+      for (let randomNumber of possibleX) {
+        //If selected column by random number is not full move is setted true
+        if (frontier[randomNumber] != -1) {
+          x = randomNumber;
+          y = frontier[x];
+          moveFound = true;
+          break;
+        }
+        duplicateCoordinatesCounter++;
+      }
+    }
+    await Waiter(placePiece, ...[new Move(y, x), player, opponent]);
     return true;
   }
 
+  /**
+   * @param {number} x - Root Streak's x coordinate
+   * @param {number} y - Root Streak's y coordinate
+   * @param {number} player - Actual player
+   * @param {number} opponent - Actual opponent
+   */
   function StartStreaks(x, y, player, opponent) {
-    //forse deve memorizzare quale ha gia espanso
-    //@param x:int; row
-    //@param y:int; column
-    //@param opponent: int; could be 1 or 2
-    //DA RIFARE, MANCA TUTTA LA PARTE DELLA CREAZIONE DELL ARAY DI PUNTATORI NELLE STREAK
-
+    //Root move
     let rootMove = new Move(y, x);
-    console.log("[[Creando streaks di mossa: %o]]", rootMove);
 
     /**
      * @type {{ cl: Streak | null, ul: Streak | null, ur: Streak | null }}
+     * Save streaks here later, for setOppositeStreaks function
      */
     let streaks = {
       cl: null,
@@ -158,51 +172,58 @@
       ur: null,
     };
 
+    //Getting valid directions where to build streaks
     let posDir = new PossibleDirection(y, x, frontier).getPossibleDirections();
 
+    //Iterating on posDir
     for (let direction of posDir) {
+      //Initializing the new Streak
       let streak = new Streak({
         rootMove: rootMove,
         direction: direction,
         player: player,
       });
 
+      //Getting the Streak's offsets
       let dX = streak.getDeltaX();
       let dY = streak.getDeltaY();
 
+      //Initializing Streak's Item
       let item = new Item(streak);
 
+      //Building the Streak
       for (let i = 0; i < 4; i++) {
+        //Saving next cell on the line(starting from root)
         let nextCell = Table[y + dY * i][x + dX * i];
 
         //Player's piece found on the line
         if (nextCell === player) {
-          streak.streakCount += 1; //incrementing streak counter
-
+          streak.streakCount += 1;
           //Winning condition
           if (streak.streakCount === 4) {
+            //Saving winner's name
             winner = playerNames[streak.player - 1];
             return;
           }
-          //If it's max the third cell checked AND the adjacent frontier is on the line
+          //If it's max the third cell on the line AND the adjacent frontier is on the line then add next move
           else {
             if (i < 3 && frontier[x + dX * (i + 1)] == y + dY * (i + 1)) {
-              streak.addNextMove(new Move(y + dY * (i + 1), x + dX * (i + 1))); //pushing adjacent hole, as the nextMove of the streak, to the found piece for continuing the streak
+              streak.addNextMove(new Move(y + dY * (i + 1), x + dX * (i + 1))); //pushing adjacent hole inte streak's nextMove array
             }
           }
         }
-        //Opponent's piece found on the line
+        //Opponent's piece found on the line, Stop the streak building
         else if (nextCell === opponent) {
           break;
         }
-        //Cell is empty on the line
+        //nextCell is empty on the line
         else {
-          //if cell isn't pointed by anyone
+          //if cell isn't pointed by any other streak, initialize new array
           if (!nextCell) {
             Table[y + dY * i][x + dX * i] = new Array();
           }
-          Table[y + dY * i][x + dX * i].push(item); //Pushing the pointer to the item(Streak) in the cell
-          streak.addCellPointer(Table[y + dY * i][x + dX * i]);
+          Table[y + dY * i][x + dX * i].push(item); //Pushing the reference to the item(Streak) in the cell
+          streak.addCellPointer(Table[y + dY * i][x + dX * i]); //Save the pointed cell by the streak, in the streak
         }
 
         //Streak analysed, pushing it in the right list
@@ -230,20 +251,25 @@
     }
   }
 
+  /**
+   * @param {number} player - Actual player
+   * @param {number} opponent - Actual opponent
+   * @returns True if there are streaks to continue, otherwise False
+   */
   function continueStreak(player, opponent) {
     //checking the list of streaks, returns first possible nextMove
     for (let i = 0; i < 2; i++) {
-      let nextStreakItem = Streaks[player - 1][i].head; //Take first priority streak holder
+      let nextStreakItem = Streaks[player - 1][i].head; //Take first Item in the 3/2-streaks list
 
-      //prima streak che trovo(con streak count più alto) la contuinuo
+      //Continuing first streak found in the list
       for (; nextStreakItem; nextStreakItem = nextStreakItem.next) {
         let streak = nextStreakItem.streak; //getting streak reference from the list
-        let nextMove = streak.nextMove;
+        let nextMove = streak.nextMove; //Saving streak's nextMove's reference
 
-        //if streak has next move, just do the first one in the list
+        //if streak has next move, just continue first one in the list
         if (nextMove && nextMove.length) {
-          console.log("[[Continuing streak: %o]]", { ...streak });
-          placePiece(nextMove[0], player, opponent);
+          placePiece(nextMove[0], player, opponent); //Placing the piece and do all the updating job on the cell
+          //Incrementing 'Mosse Sensate per vincere' counter
           movesForWinningCounter++;
           return true;
         }
@@ -253,48 +279,44 @@
     return false;
   }
 
-  //return true if Block first opponent's 3-streak, false if there is none
+  /**
+   * @param {number} player - Actual player
+   * @param {number} opponent - Actual opponent
+   * @returns True if there are streaks to Block, otherwise False
+   * @description Blocking just opponent's 3 streaks or 2 symmetric streaks with nextMoves
+   */
   function BlockStreak(player, opponent) {
     let bestOpponentStreakItem = Streaks[opponent - 1][0].head; //Getting opponent's longest streak item
 
-    console.log("Checking if there are any streaks to block!", {
-      ...bestOpponentStreakItem,
-    });
-
-    //check opponent's best streaks list for finding a 3-streak and if it has a next move then kill it and return true
+    //doing the @Description job
     for (
       ;
       bestOpponentStreakItem;
       bestOpponentStreakItem = bestOpponentStreakItem.next
     ) {
-      let bestOpponentStreak = bestOpponentStreakItem.streak;
-      let oppenentnextMove = bestOpponentStreak.nextMove;
-      console.log(
-        "Item found",
-        { ...bestOpponentStreak },
-        bestOpponentStreak.hasNextMove()
-      );
+      let bestOpponentStreak = bestOpponentStreakItem.streak; //Saving bestOpponentStreak reference
+      let oppenentnextMove = bestOpponentStreak.nextMove; //Saving streak's nextMove array reference
 
+      //If it's a 3-Streak AND has nextMove
       if (
         bestOpponentStreak.hasNextMove() &&
         bestOpponentStreak.streakCount === 3
       ) {
-        console.log("[[Blocking player's %d streak %o]]", opponent, {
-          ...bestOpponentStreak,
-        });
-        placePiece(oppenentnextMove[0], player, opponent);
+        placePiece(oppenentnextMove[0], player, opponent); //Place piece where the best opponent's next Move is
+        //Incrementing 'Mosse sensate per bloccare'
         movesForBlocking++;
         return true;
       }
-      //checking if opponent has a 2-symmetric streak
+      //If opponent has a 2-symmetric streak
       else if (
         bestOpponentStreak.hasNextMove() &&
         bestOpponentStreak.oppositeDirectionStreak &&
         bestOpponentStreak.oppositeDirectionStreak.hasNextMove()
       ) {
-        console.log("[[STREAK DA DUE BLOCCATA]]");
-        placePiece(oppenentnextMove[0], player, opponent);
+        placePiece(oppenentnextMove[0], player, opponent); //Place piece where the best opponent's next Move is
+        //Incrementing 'Mosse sensate per bloccare'
         movesForBlocking++;
+        console.log("Blocking 2 streak %o", { ...bestOpponentStreak });
         return true;
       }
     }
@@ -306,34 +328,19 @@
    * @param {number} opponent - who's the opponent now?
    */
   function CleaningCell(cell, opponent) {
-    //For every streak in the cell pick a streak
+    //If cell not empty
     if (Array.isArray(cell) && cell.length) {
-      console.log(
-        "[[Cleaning cell(%o) from player %d pointers...]]",
-        [...cell],
-        opponent
-      );
+      //Iterating on items in the cell
       for (let item of [...cell]) {
-        let streak = item.streak;
-        //If opponent's streak
+        let streak = item.streak; //Saving streak
+        //If it's opponent's streak
         if (streak.player === opponent) {
-          console.log("{{Streak %o is being canceled}}", { ...streak });
-          //For every cell pointed of cellsPointersInTheLine remove the item reference in cells
-          console.log("{{Pointed cells by Streak %o}}", [
-            ...streak.cellsPointersInTheLine,
-          ]);
-          for (let cellPointed of streak.cellsPointersInTheLine) {
-            let iItem = cellPointed.indexOf(item);
-            cellPointed.splice(iItem, 1); //Removing from cell reference to the streak
-
-            console.log(
-              "{{Erasing cell %o from %o}}",
-              [...cellPointed],
-              [...streak.cellsPointersInTheLine]
-            );
+          //Remove Streak from every pointed cell
+          for (let pointedCell of streak.cellsPointersInTheLine) {
+            let iItem = pointedCell.indexOf(item); //Saving Streak's index in the pointedCell
+            pointedCell.splice(iItem, 1); //Deleting streak from the pointed cell
           }
           item.detach(); //Detaching Streak item from the list, the garbage collector can now collect it
-          console.log("[Item erased %o]", { ...item });
         }
       }
     }
@@ -344,103 +351,82 @@
    * @param {number} x - y coordinate where to update nextMoves
    * @param {Item[]} cell - Table[y][x]'s cell
    *
-   * Update all player's nextMoves from the cell,
-   * and updates all the nextMoves of streaks pointing to the frontier
+   * @description Update all player's nextMoves in the cell,
+   * and do the same in the new frontier
    */
   function UpdateNextMoves(y, x, cell = Table[y][x]) {
-    console.log(
-      "[[Updating cell(%d, %d) = %O...]]",
-      y,
-      x,
-      cell ? [...cell] : "Vuota"
-    );
-    //Updating nextMoves of new frontier pointing streaks
+    //Updating nextMoves in new frontier
+    //If column not full AND cell not empty
     if (frontier[x] != -1 && Table[y - 1][x]) {
+      //Iterating on items in the new frontier
       for (let item of Table[y - 1][x]) {
+        //If isn't an up streak(It will be updated later)
         if (item.streak.direction !== "uc") {
           let move = new Move(y - 1, x);
           /**
            * @type {Streak}
            */
-          item.streak.addNextMove(move);
-          console.log(
-            "[[Updating frontier of y: %d, x:%d\nUpdating %o\n\n",
-            y - 1,
-            x,
-            { ...item.streak }
-          );
+          item.streak.addNextMove(move); //Updating streak's nextMove array
         }
       }
     }
+
+    //Updating nextMoves in the cell
+    //If cell touched already in the past
     if (Array.isArray(cell)) {
+      //Iterating on items in the cell
       for (let item of cell) {
         /**
          * @type {Streak}
          */
         let streak = item.streak;
         streak.streakCount++;
-        item = item.detach();
-        console.log("Moving %o to %d list", { ...item }, streak.streakCount);
+
+        item = item.detach(); //Detaching item for updating its position in the list
+
+        //Winning condintion
         if (streak.streakCount === 4) {
-          winner = playerNames[streak.player - 1];
+          winner = playerNames[streak.player - 1]; //Setting winner's name
           return;
-        } else if (streak.streakCount === 3) {
+        }
+        //Changing streak 'continuing priority' to 'Highest'
+        else if (streak.streakCount === 3) {
           Streaks[streak.player - 1][0].prepend(item);
-        } else if (streak.streakCount === 2) {
+        }
+        ////Changing streak 'continuing priority' to 'Middle'
+        else if (streak.streakCount === 2) {
           Streaks[streak.player - 1][0].append(item);
         }
 
-        console.log("[[streak cell pointers before %o]]", [
-          ...streak.cellsPointersInTheLine,
-        ]);
         streak.cellsPointersInTheLine = streak.cellsPointersInTheLine.filter(
           (pointer) => pointer != cell
-        ); //Removing pointer to nextMove cell from the list
-        console.log("[[streak cell pointers after %o]]", [
-          ...streak.cellsPointersInTheLine,
-        ]);
+        ); //Removing cell pointer of done move
 
         //deciding direction offsets for nextMove
-        let deltaY = 0; //direction: "c"
-        if (streak.direction[0] == "u") {
-          deltaY = -1;
-        } else if (streak.direction[0] == "d") {
-          deltaY = +1;
-        }
+        let dY = streak.getDeltaY();
+        let dX = streak.getDeltaX();
 
-        let deltaX = 0; //direction: "cc"
-        if (streak.direction[1] == "l") {
-          deltaX = -1;
-        } else if (streak.direction[1] == "r") {
-          deltaX = +1;
-        }
-
-        console.log("[[DELTAY: %d, DELTAX: %d]]", deltaY, deltaX);
-        //If move is not the last cell of the streak, then add next move on the direction as nextMove
+        //If move is not the last cell of the streak, then add next move in the streak
         if (
-          Boolean(Math.abs(deltaX)) == (streak.rootMove.x + deltaX * 3 != x) &&
-          Boolean(Math.abs(deltaY)) == (streak.rootMove.y + deltaY * 3 != y) &&
-          frontier[x + deltaX] == y + deltaY
+          Boolean(Math.abs(dX)) == (streak.rootMove.x + dX * 3 != x) &&
+          Boolean(Math.abs(dY)) == (streak.rootMove.y + dY * 3 != y) &&
+          frontier[x + dX] == y + dY
         ) {
-          streak.addNextMove(new Move(y + deltaY, x + deltaX));
+          streak.addNextMove(new Move(y + dY, x + dX));
         }
 
+        //If nextMove not null remove done move from nextMove array
         if (streak.nextMove) {
           streak.nextMove = streak.nextMove.filter(
             (move) => move.x != x || move.y != y
-          ); //removing done move from nextMove array
+          );
         }
-
-        console.log(
-          "Cleaned LIST OF nextMoves: %o",
-          streak.nextMove ? [...streak.nextMove] : "Nessuna Next move"
-        );
       }
     }
   }
 </script>
 
-<h1>Forza Strange</h1>
+<h1>Strange Four</h1>
 <main>
   <section id="GameTable">
     <div id="tab">
@@ -467,7 +453,15 @@
         <header>Se vuoi, modifica il numero di Righe e Colonne</header>
         <h3>Righe</h3>
         <div class="rowsInputContainer">
-          <input name="Rows" bind:value={rows} type="number" step="1" min="5" />
+          <!-- svelte-ignore a11y_autofocus -->
+          <input
+            name="Rows"
+            bind:value={rows}
+            type="number"
+            step="1"
+            min="5"
+            autofocus
+          />
         </div>
         <h3>Colonne</h3>
         <div class="colsInputContainer">

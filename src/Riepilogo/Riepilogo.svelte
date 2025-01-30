@@ -5,7 +5,15 @@
     movesForBlocking,
     duplicateCoordinatesCounter,
     History;
+
+  function handleKeyDown(event) {
+    if (event.key === "Enter") {
+      document.getElementById("Reload").click();
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeyDown} />
 
 <section>
   {#if winner}
@@ -36,7 +44,7 @@
     </div>
   </div>
 
-  <button id="Reload" on:click={() => window.location.reload()}
+  <button type="submit" id="Reload" on:click={() => window.location.reload()}
     >Ricarica Pagina</button
   >
 </section>
